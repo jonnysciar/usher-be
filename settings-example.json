@@ -1,0 +1,3 @@
+{
+    "rust-analyzer.runnables.extraEnv": {"DATABASE_URL": "postgresql://usher-db:kyra1907@localhost:5432/usher-db"}
+}
