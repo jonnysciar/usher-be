@@ -63,6 +63,8 @@ pub enum ErrorKind {
     InvalidEmailAddress,
     EmailAlreadyUsed,
     LoginFailed,
+    Unauthorized,
+    InvalidToken,
 }
 
 impl ErrorKind {
@@ -73,6 +75,8 @@ impl ErrorKind {
             Self::InvalidEmailAddress | Self::EmailAlreadyUsed | Self::LoginFailed => {
                 StatusCode::BAD_REQUEST
             }
+            Self::Unauthorized => StatusCode::UNAUTHORIZED,
+            Self::InvalidToken => StatusCode::BAD_REQUEST,
         }
     }
 }

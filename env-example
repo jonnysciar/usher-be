@@ -1,1 +1,2 @@
 DATABASE_URL="postgresql://username:password@host:port/dbname"
+JWT_SECRET="your secret"

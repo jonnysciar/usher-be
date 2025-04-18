@@ -1,10 +1,12 @@
 mod app_state;
 mod handlers;
 mod response;
+mod jwt_controller;
 
 use app_state::AppState;
-use axum::{routing::post, Router};
-use handlers::{create_user, login};
+use axum::{routing::{get, post}, Router};
+use handlers::{login, signup, userinfo};
+use jwt_controller::JwtController;
 use sqlx::postgres::PgPool;
 use std::sync::Arc;
 
@@ -20,11 +22,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let app_state = AppState {
         pool: Arc::new(PgPool::connect(&dotenvy::var("DATABASE_URL")?).await?),
+        jwt_controller: Arc::new(JwtController::new()),
     };
 
     let user_router = Router::new()
-        .route("/create", post(create_user::handler))
+        .route("/signup", post(signup::handler))
         .route("/login", post(login::handler))
+        .route("/info", get(userinfo::handler))
         .with_state(app_state);
 
     let app = Router::new().nest("/user", user_router);
