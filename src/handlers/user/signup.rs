@@ -9,15 +9,15 @@ use email_address::EmailAddress;
 use serde::Deserialize;
 use std::str::FromStr;
 
-const INSERT_USER_QUERY: &str = "INSERT INTO users(email, name, last_name, driver, hashed_password) VALUES ($1, $2, $3, $4, $5)";
+const INSERT_USER_QUERY: &str = "INSERT INTO users(email, hashed_password, name, last_name, driver) VALUES ($1, $2, $3, $4, $5)";
 
 #[derive(Debug, Deserialize)]
 pub struct Payload {
     email: String,
+    password: String,
     name: String,
     last_name: String,
     driver: bool,
-    password: String,
 }
 
 //TODO: Add log
@@ -33,10 +33,10 @@ pub async fn handler(
 
     let _ = sqlx::query(INSERT_USER_QUERY)
         .bind(email.as_str())
+        .bind(hashed_pwd)
         .bind(payload.name)
         .bind(payload.last_name)
         .bind(payload.driver)
-        .bind(hashed_pwd)
         .execute(state.pool.as_ref())
         .await
         .map_err(|e| {

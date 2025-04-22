@@ -1,7 +1,8 @@
-use crate::handlers::{User, UserId};
+use crate::handlers::{user::User, UserClaim};
 use crate::response::{Error, ErrorKind};
 use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
+use sqlx::types::Uuid;
 use std::{num::ParseIntError, usize};
 
 const SECS_DAY: usize = 86400;
@@ -17,7 +18,7 @@ pub struct AccessClaims {
 impl From<&User> for AccessClaims {
     fn from(value: &User) -> Self {
         Self {
-            sub: value.id.to_string(),
+            sub: value.id.as_hyphenated().to_string(),
             exp: 0,
             driver: value.driver,
         }
@@ -44,15 +45,18 @@ impl JwtController {
         jsonwebtoken::encode(&Header::default(), &claims, &self.enc_key).map_err(|e| e.into())
     }
 
-    pub fn decode_access_token(&self, token: &str) -> Result<UserId, Error> {
+    pub fn decode_access_token(&self, token: &str) -> Result<UserClaim, Error> {
         let res =
             jsonwebtoken::decode::<AccessClaims>(token, &self.dec_key, &Validation::default())
                 .map_err(|e| e.into())?;
-        res.claims
-            .sub
-            .parse::<i32>()
-            .map(|id| UserId(id))
-            .map_err(|e| e.into())
+        Uuid::try_parse(&res.claims.sub)
+            .map(|u| {
+                UserClaim {
+                    id: u,
+                    driver: res.claims.driver,
+                }
+            })
+            .map_err(|_| Error::new(ErrorKind::InvalidToken))
     }
 }
 

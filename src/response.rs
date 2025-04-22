@@ -65,6 +65,7 @@ pub enum ErrorKind {
     LoginFailed,
     Unauthorized,
     InvalidToken,
+    InvalidRideId,
 }
 
 impl ErrorKind {
@@ -72,11 +73,12 @@ impl ErrorKind {
         match self {
             Self::DbConnection => StatusCode::BAD_GATEWAY,
             Self::Server => StatusCode::INTERNAL_SERVER_ERROR,
-            Self::InvalidEmailAddress | Self::EmailAlreadyUsed | Self::LoginFailed => {
-                StatusCode::BAD_REQUEST
-            }
+            Self::InvalidEmailAddress
+            | Self::EmailAlreadyUsed
+            | Self::LoginFailed
+            | Self::InvalidToken
+            | Self::InvalidRideId => StatusCode::BAD_REQUEST,
             Self::Unauthorized => StatusCode::UNAUTHORIZED,
-            Self::InvalidToken => StatusCode::BAD_REQUEST,
         }
     }
 }

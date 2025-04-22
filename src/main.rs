@@ -1,11 +1,11 @@
 mod app_state;
 mod handlers;
-mod response;
 mod jwt_controller;
+mod response;
 
 use app_state::AppState;
-use axum::{routing::{get, post}, Router};
-use handlers::{login, signup, userinfo};
+use axum::Router;
+use handlers::{ride, user};
 use jwt_controller::JwtController;
 use sqlx::postgres::PgPool;
 use std::sync::Arc;
@@ -25,13 +25,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         jwt_controller: Arc::new(JwtController::new()),
     };
 
-    let user_router = Router::new()
-        .route("/signup", post(signup::handler))
-        .route("/login", post(login::handler))
-        .route("/info", get(userinfo::handler))
-        .with_state(app_state);
-
-    let app = Router::new().nest("/user", user_router);
+    let app = Router::new()
+        .nest("/user", user::get_router(&app_state))
+        .nest("/ride", ride::get_router(&app_state));
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await?;
     Ok(axum::serve(listener, app).await?)
