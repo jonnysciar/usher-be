@@ -32,7 +32,7 @@ pub async fn handler(
     let uuid =
         Uuid::try_parse(&access_claims.sub).map_err(|_| Error::new(ErrorKind::InvalidToken))?;
 
-    let _ = sqlx::query(INSERT_RIDE_QUERY)
+    let n_rows = sqlx::query(INSERT_RIDE_QUERY)
         .bind(uuid)
         .bind(payload.start_lat)
         .bind(payload.start_lon)
@@ -40,7 +40,12 @@ pub async fn handler(
         .bind(payload.end_lon)
         .execute(state.pool.as_ref())
         .await
-        .map_err(|_| Error::new(ErrorKind::Server))?;
+        .map_err(|_| Error::new(ErrorKind::Server))?
+        .rows_affected();
+
+    if n_rows != 1 {
+        return Err(Error::new(ErrorKind::FailedRideOperation).into());
+    }
 
     Ok((StatusCode::OK, Json::from(Success::new())))
 }

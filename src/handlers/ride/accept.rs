@@ -9,7 +9,8 @@ use axum::{
 use serde::Deserialize;
 use sqlx::types::Uuid;
 
-const UPDATE_RIDE_QUERY: &str = "UPDATE rides SET driver_id = $1, state = 'RUNNING' WHERE id = $2";
+const UPDATE_RIDE_QUERY: &str =
+    "UPDATE rides SET driver_id = $1, state = 'RUNNING' WHERE id = $2 AND state = 'CREATED'";
 
 #[derive(Debug, Deserialize)]
 pub struct Payload {
@@ -31,12 +32,17 @@ pub async fn handler(
     let ride_uuid =
         Uuid::try_parse(&payload.ride_id).map_err(|_| Error::new(ErrorKind::InvalidRideId))?;
 
-    let _ = sqlx::query(UPDATE_RIDE_QUERY)
+    let n_rows = sqlx::query(UPDATE_RIDE_QUERY)
         .bind(uuid)
         .bind(ride_uuid)
         .execute(state.pool.as_ref())
         .await
-        .map_err(|_| Error::new(ErrorKind::Server))?;
+        .map_err(|_| Error::new(ErrorKind::Server))?
+        .rows_affected();
+
+    if n_rows != 1 {
+        return Err(Error::new(ErrorKind::FailedRideOperation).into());
+    }
 
     Ok((StatusCode::OK, Json::from(Success::new())))
 }

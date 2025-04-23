@@ -66,6 +66,7 @@ pub enum ErrorKind {
     Unauthorized,
     InvalidToken,
     InvalidRideId,
+    FailedRideOperation,
 }
 
 impl ErrorKind {
@@ -77,7 +78,8 @@ impl ErrorKind {
             | Self::EmailAlreadyUsed
             | Self::LoginFailed
             | Self::InvalidToken
-            | Self::InvalidRideId => StatusCode::BAD_REQUEST,
+            | Self::InvalidRideId
+            | Self::FailedRideOperation => StatusCode::BAD_REQUEST,
             Self::Unauthorized => StatusCode::UNAUTHORIZED,
         }
     }
