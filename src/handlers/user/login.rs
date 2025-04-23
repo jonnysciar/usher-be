@@ -18,6 +18,7 @@ pub struct Payload {
 
 #[derive(Debug, Serialize)]
 pub struct ReplyPayload {
+    renew_token: String,
     token: String,
 }
 
@@ -44,7 +45,8 @@ pub async fn handler(
     }
 
     let reply = ReplyPayload {
-        token: state.jwt_controller.encode_access_token(&user).unwrap()
+        renew_token: state.jwt_controller.encode_renew_token(&user)?,
+        token: state.jwt_controller.encode_access_token(user)?,
     };
 
     Ok((StatusCode::OK, Json::from(SuccessWithPayload::new(reply))))

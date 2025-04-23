@@ -1,29 +1,18 @@
-use crate::handlers::{user::User, UserClaim};
+use crate::app_state::AppState;
+use crate::handlers::user::User;
 use crate::response::{Error, ErrorKind};
+use axum::{extract::FromRequestParts, http::request::Parts, RequestPartsExt};
+use axum_extra::{
+    headers::{authorization::Bearer, Authorization},
+    TypedHeader,
+};
+use jsonwebtoken::errors as jwt_errors;
 use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
-use sqlx::types::Uuid;
-use std::{num::ParseIntError, usize};
+use std::usize;
 
 const SECS_DAY: usize = 86400;
-const SECS_90_DAY: usize = SECS_DAY * 30;
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct AccessClaims {
-    sub: String, // User id
-    exp: usize,
-    driver: bool,
-}
-
-impl From<&User> for AccessClaims {
-    fn from(value: &User) -> Self {
-        Self {
-            sub: value.id.as_hyphenated().to_string(),
-            exp: 0,
-            driver: value.driver,
-        }
-    }
-}
+const SECS_30_DAY: usize = SECS_DAY * 30;
 
 pub struct JwtController {
     enc_key: EncodingKey,
@@ -39,35 +28,112 @@ impl JwtController {
         }
     }
 
-    pub fn encode_access_token(&self, user: &User) -> Result<String, Error> {
+    pub fn encode_access_token(&self, user: User) -> Result<String, Error> {
         let mut claims: AccessClaims = user.into();
         claims.exp = jsonwebtoken::get_current_timestamp() as usize + SECS_DAY;
         jsonwebtoken::encode(&Header::default(), &claims, &self.enc_key).map_err(|e| e.into())
     }
 
-    pub fn decode_access_token(&self, token: &str) -> Result<UserClaim, Error> {
-        let res =
+    pub fn decode_access_token(&self, token: &str) -> Result<AccessClaims, Error> {
+        Ok(
             jsonwebtoken::decode::<AccessClaims>(token, &self.dec_key, &Validation::default())
-                .map_err(|e| e.into())?;
-        Uuid::try_parse(&res.claims.sub)
-            .map(|u| {
-                UserClaim {
-                    id: u,
-                    driver: res.claims.driver,
-                }
-            })
-            .map_err(|_| Error::new(ErrorKind::InvalidToken))
+                .map_err(|e| e.into())?
+                .claims,
+        )
+    }
+
+    pub fn encode_renew_token(&self, user: &User) -> Result<String, Error> {
+        let mut claims: RenewClaims = user.into();
+        claims.exp = jsonwebtoken::get_current_timestamp() as usize + SECS_30_DAY;
+        jsonwebtoken::encode(&Header::default(), &claims, &self.enc_key).map_err(|e| e.into())
+    }
+
+    pub fn decode_renew_token(&self, token: &str) -> Result<RenewClaims, Error> {
+        Ok(
+            jsonwebtoken::decode::<RenewClaims>(token, &self.dec_key, &Validation::default())
+                .map_err(|e| e.into())?
+                .claims,
+        )
     }
 }
 
-impl Into<Error> for ParseIntError {
-    fn into(self) -> Error {
-        Error::new(ErrorKind::InvalidToken)
+#[derive(Debug, Serialize, Deserialize)]
+pub struct AccessClaims {
+    pub sub: String, // User id
+    exp: usize,
+    pub name: String,
+    pub last_name: String,
+    pub email: String,
+    pub driver: bool,
+}
+
+impl From<User> for AccessClaims {
+    fn from(value: User) -> Self {
+        Self {
+            sub: value.id.as_hyphenated().to_string(),
+            exp: 0,
+            name: value.name,
+            last_name: value.last_name,
+            email: value.email,
+            driver: value.driver,
+        }
     }
 }
 
-impl Into<Error> for jsonwebtoken::errors::Error {
+impl FromRequestParts<AppState> for AccessClaims {
+    type Rejection = Error;
+
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &AppState,
+    ) -> Result<Self, Self::Rejection> {
+        let TypedHeader(Authorization(bearer)) = parts
+            .extract::<TypedHeader<Authorization<Bearer>>>()
+            .await
+            .map_err(|_| Error::new(ErrorKind::InvalidToken))?;
+
+        state.jwt_controller.decode_access_token(bearer.token())
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct RenewClaims {
+    pub sub: String, // User id
+    exp: usize,
+}
+
+impl From<&User> for RenewClaims {
+    fn from(value: &User) -> Self {
+        Self {
+            sub: value.id.as_hyphenated().to_string(),
+            exp: 0,
+        }
+    }
+}
+
+impl FromRequestParts<AppState> for RenewClaims {
+    type Rejection = Error;
+
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &AppState,
+    ) -> Result<Self, Self::Rejection> {
+        let TypedHeader(Authorization(bearer)) = parts
+            .extract::<TypedHeader<Authorization<Bearer>>>()
+            .await
+            .map_err(|_| Error::new(ErrorKind::InvalidToken))?;
+
+        state.jwt_controller.decode_renew_token(bearer.token())
+    }
+}
+
+impl Into<Error> for jwt_errors::Error {
     fn into(self) -> Error {
-        Error::new(ErrorKind::InvalidToken)
+        Error::new(match self.kind() {
+            jwt_errors::ErrorKind::InvalidRsaKey(_)
+            | jwt_errors::ErrorKind::InvalidKeyFormat
+            | jwt_errors::ErrorKind::InvalidEcdsaKey => ErrorKind::Server,
+            _ => ErrorKind::InvalidToken,
+        })
     }
 }

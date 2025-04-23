@@ -1,5 +1,5 @@
 use crate::app_state::AppState;
-use crate::handlers::UserClaim;
+use crate::jwt_controller::AccessClaims;
 use crate::response::{Error, ErrorKind, Success};
 use axum::{
     extract::{Json, State},
@@ -9,7 +9,7 @@ use axum::{
 use serde::Deserialize;
 use sqlx::types::Uuid;
 
-const INSERT_RIDE_QUERY: &str = "UPDATE rides SET driver_id = $1, state = 'RUNNING' WHERE id = $2";
+const UPDATE_RIDE_QUERY: &str = "UPDATE rides SET driver_id = $1, state = 'RUNNING' WHERE id = $2";
 
 #[derive(Debug, Deserialize)]
 pub struct Payload {
@@ -18,19 +18,21 @@ pub struct Payload {
 
 //TODO: Add log
 pub async fn handler(
-    user_claim: UserClaim,
+    access_claims: AccessClaims,
     State(state): State<AppState>,
     Json(payload): Json<Payload>,
 ) -> Result<(StatusCode, Json<Success>)> {
-    if !user_claim.driver {
+    if !access_claims.driver {
         return Err(Error::new(ErrorKind::Unauthorized).into());
     }
 
+    let uuid =
+        Uuid::try_parse(&access_claims.sub).map_err(|_| Error::new(ErrorKind::InvalidToken))?;
     let ride_uuid =
         Uuid::try_parse(&payload.ride_id).map_err(|_| Error::new(ErrorKind::InvalidRideId))?;
 
-    let _ = sqlx::query(INSERT_RIDE_QUERY)
-        .bind(user_claim.id)
+    let _ = sqlx::query(UPDATE_RIDE_QUERY)
+        .bind(uuid)
         .bind(ride_uuid)
         .execute(state.pool.as_ref())
         .await

@@ -1,5 +1,6 @@
 mod info;
 mod login;
+mod renew;
 mod signup;
 
 use crate::AppState;
@@ -22,5 +23,6 @@ pub fn get_router(app_state: &AppState) -> Router {
         .route("/signup", post(signup::handler))
         .route("/login", post(login::handler))
         .route("/info", get(info::handler))
+        .route("/renew", get(renew::handler))
         .with_state(app_state.clone())
 }

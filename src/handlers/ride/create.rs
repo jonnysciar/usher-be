@@ -1,5 +1,5 @@
 use crate::app_state::AppState;
-use crate::handlers::UserClaim;
+use crate::jwt_controller::AccessClaims;
 use crate::response::{Error, ErrorKind, Success};
 use axum::{
     extract::{Json, State},
@@ -7,6 +7,7 @@ use axum::{
     response::Result,
 };
 use serde::Deserialize;
+use sqlx::types::Uuid;
 
 const INSERT_RIDE_QUERY: &str = "INSERT INTO rides(user_id, start_lat, start_lon, end_lat, end_lon) VALUES ($1, $2, $3, $4, $5)";
 
@@ -20,16 +21,19 @@ pub struct Payload {
 
 //TODO: Add log
 pub async fn handler(
-    user_claim: UserClaim,
+    access_claims: AccessClaims,
     State(state): State<AppState>,
     Json(payload): Json<Payload>,
 ) -> Result<(StatusCode, Json<Success>)> {
-    if user_claim.driver {
+    if access_claims.driver {
         return Err(Error::new(ErrorKind::Unauthorized).into());
     }
 
+    let uuid =
+        Uuid::try_parse(&access_claims.sub).map_err(|_| Error::new(ErrorKind::InvalidToken))?;
+
     let _ = sqlx::query(INSERT_RIDE_QUERY)
-        .bind(user_claim.id)
+        .bind(uuid)
         .bind(payload.start_lat)
         .bind(payload.start_lon)
         .bind(payload.end_lat)
