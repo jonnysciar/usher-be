@@ -1,6 +1,7 @@
 mod accept;
-mod create;
 mod complete;
+mod create;
+mod delete;
 
 use crate::AppState;
 use axum::routing::post;
@@ -11,5 +12,6 @@ pub fn get_router(app_state: &AppState) -> Router {
         .route("/create", post(create::handler))
         .route("/accept", post(accept::handler))
         .route("/complete", post(complete::handler))
+        .route("/delete", post(delete::handler))
         .with_state(app_state.clone())
 }
