@@ -50,7 +50,7 @@ impl IntoResponse for Error {
     fn into_response(self) -> Response {
         (
             self.error_kind.get_status_code(),
-            Json::from(Error::from(self)),
+            Json::from(self),
         )
             .into_response()
     }

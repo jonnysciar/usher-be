@@ -9,7 +9,6 @@ use axum_extra::{
 use jsonwebtoken::errors as jwt_errors;
 use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
-use std::usize;
 
 const SECS_DAY: usize = 86400;
 const SECS_30_DAY: usize = SECS_DAY * 30;
@@ -23,21 +22,24 @@ impl JwtController {
     pub fn new() -> Self {
         let jwt_secret = dotenvy::var("JWT_SECRET").expect("Could not start without JWT_SECRET!");
         Self {
-            enc_key: EncodingKey::from_secret(&jwt_secret.as_bytes()),
-            dec_key: DecodingKey::from_secret(&jwt_secret.as_bytes()),
+            enc_key: EncodingKey::from_secret(jwt_secret.as_bytes()),
+            dec_key: DecodingKey::from_secret(jwt_secret.as_bytes()),
         }
     }
 
     pub fn encode_access_token(&self, user: User) -> Result<String, Error> {
         let mut claims: AccessClaims = user.into();
         claims.exp = jsonwebtoken::get_current_timestamp() as usize + SECS_DAY;
-        jsonwebtoken::encode(&Header::default(), &claims, &self.enc_key).map_err(|e| e.into())
+        Ok(jsonwebtoken::encode(
+            &Header::default(),
+            &claims,
+            &self.enc_key,
+        )?)
     }
 
     pub fn decode_access_token(&self, token: &str) -> Result<AccessClaims, Error> {
         Ok(
-            jsonwebtoken::decode::<AccessClaims>(token, &self.dec_key, &Validation::default())
-                .map_err(|e| e.into())?
+            jsonwebtoken::decode::<AccessClaims>(token, &self.dec_key, &Validation::default())?
                 .claims,
         )
     }
@@ -45,13 +47,16 @@ impl JwtController {
     pub fn encode_renew_token(&self, user: &User) -> Result<String, Error> {
         let mut claims: RenewClaims = user.into();
         claims.exp = jsonwebtoken::get_current_timestamp() as usize + SECS_30_DAY;
-        jsonwebtoken::encode(&Header::default(), &claims, &self.enc_key).map_err(|e| e.into())
+        Ok(jsonwebtoken::encode(
+            &Header::default(),
+            &claims,
+            &self.enc_key,
+        )?)
     }
 
     pub fn decode_renew_token(&self, token: &str) -> Result<RenewClaims, Error> {
         Ok(
-            jsonwebtoken::decode::<RenewClaims>(token, &self.dec_key, &Validation::default())
-                .map_err(|e| e.into())?
+            jsonwebtoken::decode::<RenewClaims>(token, &self.dec_key, &Validation::default())?
                 .claims,
         )
     }
@@ -127,9 +132,9 @@ impl FromRequestParts<AppState> for RenewClaims {
     }
 }
 
-impl Into<Error> for jwt_errors::Error {
-    fn into(self) -> Error {
-        Error::new(match self.kind() {
+impl From<jwt_errors::Error> for Error {
+    fn from(value: jwt_errors::Error) -> Self {
+        Error::new(match value.kind() {
             jwt_errors::ErrorKind::InvalidRsaKey(_)
             | jwt_errors::ErrorKind::InvalidKeyFormat
             | jwt_errors::ErrorKind::InvalidEcdsaKey => ErrorKind::Server,
