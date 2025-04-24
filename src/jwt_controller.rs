@@ -105,6 +105,7 @@ impl FromRequestParts<AppState> for AccessClaims {
 pub struct RenewClaims {
     pub sub: String, // User id
     exp: usize,
+    renew: bool
 }
 
 impl From<&User> for RenewClaims {
@@ -112,6 +113,7 @@ impl From<&User> for RenewClaims {
         Self {
             sub: value.id.as_hyphenated().to_string(),
             exp: 0,
+            renew: true
         }
     }
 }
