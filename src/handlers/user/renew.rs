@@ -1,7 +1,7 @@
 use super::User;
 use crate::app_state::AppState;
 use crate::jwt_controller::RenewClaims;
-use crate::response::{Error, ErrorKind, SuccessWithPayload};
+use crate::response::{Error, ErrorKind};
 use axum::{
     extract::{Json, State},
     http::StatusCode,
@@ -22,7 +22,7 @@ pub struct ReplyPayload {
 pub async fn handler(
     renew_claims: RenewClaims,
     State(state): State<AppState>,
-) -> Result<(StatusCode, Json<SuccessWithPayload<ReplyPayload>>)> {
+) -> Result<(StatusCode, Json<ReplyPayload>)> {
     let uuid =
         Uuid::try_parse(&renew_claims.sub).map_err(|_| Error::new(ErrorKind::InvalidToken))?;
     let user: User = sqlx::query_as(SELECT_USER_QUERY)
@@ -41,5 +41,5 @@ pub async fn handler(
         token: state.jwt_controller.encode_access_token(user)?,
     };
 
-    Ok((StatusCode::OK, Json::from(SuccessWithPayload::new(reply))))
+    Ok((StatusCode::OK, Json::from(reply)))
 }

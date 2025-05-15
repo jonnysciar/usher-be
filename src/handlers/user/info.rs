@@ -1,7 +1,7 @@
 use super::User;
 use crate::app_state::AppState;
 use crate::jwt_controller::AccessClaims;
-use crate::response::{Error, ErrorKind, SuccessWithPayload};
+use crate::response::{Error, ErrorKind};
 use axum::{
     extract::{Json, State},
     http::StatusCode,
@@ -24,7 +24,7 @@ pub struct ReplyPayload {
 pub async fn handler(
     access_claims: AccessClaims,
     State(state): State<AppState>,
-) -> Result<(StatusCode, Json<SuccessWithPayload<ReplyPayload>>)> {
+) -> Result<(StatusCode, Json<ReplyPayload>)> {
     let uuid =
         Uuid::try_parse(&access_claims.sub).map_err(|_| Error::new(ErrorKind::InvalidToken))?;
     let user: User = sqlx::query_as(SELECT_USER_QUERY)
@@ -44,5 +44,5 @@ pub async fn handler(
         driver: user.driver,
     };
 
-    Ok((StatusCode::OK, Json::from(SuccessWithPayload::new(reply))))
+    Ok((StatusCode::OK, Json::from(reply)))
 }

@@ -1,5 +1,5 @@
 use crate::app_state::AppState;
-use crate::response::{Error, ErrorKind, Success};
+use crate::response::{Error, ErrorKind};
 use axum::{
     extract::{Json, State},
     http::StatusCode,
@@ -24,7 +24,7 @@ pub struct Payload {
 pub async fn handler(
     State(state): State<AppState>,
     Json(payload): Json<Payload>,
-) -> Result<(StatusCode, Json<Success>)> {
+) -> Result<StatusCode> {
     let email = EmailAddress::from_str(&payload.email)
         .map_err(|_| Error::new(ErrorKind::InvalidEmailAddress))?;
 
@@ -48,5 +48,5 @@ pub async fn handler(
                 _ => ErrorKind::DbConnection,
             })
         })?;
-    Ok((StatusCode::CREATED, Json::from(Success::new())))
+    Ok(StatusCode::OK)
 }

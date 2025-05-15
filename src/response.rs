@@ -6,41 +6,13 @@ use axum::{
 use serde::Serialize;
 
 #[derive(Debug, Serialize)]
-pub struct Success {
-    success: bool,
-}
-
-impl Success {
-    pub fn new() -> Self {
-        Self { success: true }
-    }
-}
-
-#[derive(Debug, Serialize)]
-pub struct SuccessWithPayload<T> {
-    success: bool,
-    payload: T,
-}
-
-impl<T> SuccessWithPayload<T> {
-    pub fn new(payload: T) -> Self {
-        Self {
-            success: true,
-            payload,
-        }
-    }
-}
-
-#[derive(Debug, Serialize)]
 pub struct Error {
-    success: bool,
     error_kind: ErrorKind,
 }
 
 impl Error {
     pub fn new(error_kind: ErrorKind) -> Self {
         Self {
-            success: false,
             error_kind,
         }
     }

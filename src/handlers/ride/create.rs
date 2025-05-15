@@ -1,6 +1,6 @@
 use crate::app_state::AppState;
 use crate::jwt_controller::AccessClaims;
-use crate::response::{Error, ErrorKind, SuccessWithPayload};
+use crate::response::{Error, ErrorKind};
 use axum::{
     extract::{Json, State},
     http::StatusCode,
@@ -31,7 +31,7 @@ pub async fn handler(
     access_claims: AccessClaims,
     State(state): State<AppState>,
     Json(payload): Json<Payload>,
-) -> Result<(StatusCode, Json<SuccessWithPayload<ReplayPayload>>)> {
+) -> Result<(StatusCode, Json<ReplayPayload>)> {
     if access_claims.driver {
         return Err(Error::new(ErrorKind::Unauthorized).into());
     }
@@ -53,9 +53,9 @@ pub async fn handler(
         .map(|r| {
             (
                 StatusCode::OK,
-                Json::from(SuccessWithPayload::new(ReplayPayload {
+                Json::from(ReplayPayload {
                     ride_id: r.hyphenated().to_string(),
-                })),
+                }),
             )
         })
         .ok_or(Error::new(ErrorKind::FailedRideOperation).into())

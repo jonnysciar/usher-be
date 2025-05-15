@@ -1,6 +1,6 @@
 use crate::app_state::AppState;
 use crate::jwt_controller::AccessClaims;
-use crate::response::{Error, ErrorKind, Success};
+use crate::response::{Error, ErrorKind};
 use axum::{
     extract::{Json, State},
     http::StatusCode,
@@ -22,7 +22,7 @@ pub async fn handler(
     access_claims: AccessClaims,
     State(state): State<AppState>,
     Json(payload): Json<Payload>,
-) -> Result<(StatusCode, Json<Success>)> {
+) -> Result<StatusCode> {
     let uuid =
         Uuid::try_parse(&access_claims.sub).map_err(|_| Error::new(ErrorKind::InvalidToken))?;
     let ride_uuid =
@@ -40,5 +40,5 @@ pub async fn handler(
         return Err(Error::new(ErrorKind::FailedRideOperation).into());
     }
 
-    Ok((StatusCode::OK, Json::from(Success::new())))
+    Ok(StatusCode::OK)
 }
